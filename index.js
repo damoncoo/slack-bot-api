@@ -6,6 +6,8 @@ var Vow = require('vow');
 var extend = require('extend');
 var WebSocket = require('ws');
 var EventEmitter = require('events').EventEmitter;
+var url = require('url')
+
 var {
     setWsHeartbeat
 } = require('ws-heartbeat/client');
