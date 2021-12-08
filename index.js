@@ -6,7 +6,9 @@ var Vow = require('vow');
 var extend = require('extend');
 var WebSocket = require('ws');
 var EventEmitter = require('events').EventEmitter;
-var { setWsHeartbeat } = require('ws-heartbeat/client');
+var {
+    setWsHeartbeat
+} = require('ws-heartbeat/client');
 
 class Bot extends EventEmitter {
     /**
@@ -14,86 +16,97 @@ class Bot extends EventEmitter {
      * @constructor
      */
 
-     constructor(params) {
-         super(params);
-         this.token = params.token;
-         this.name = params.name;
-         this.disconnect = params.disconnect;
+    constructor(params) {
+        super(params);
+        this.token = params.token;
+        this.name = params.name;
+        this.disconnect = params.disconnect;
+        this.proxy = params.proxy
 
-         console.assert(params.token, 'token must be defined');
-         if (!this.disconnect) {
-           this.login();
-         }
-     }
+        console.assert(params.token, 'token must be defined');
+        if (!this.disconnect) {
+            this.login();
+        }
+    }
 
     /**
      * Starts a Real Time Messaging API session
      */
-     login() {
-         this._api('rtm.start').then((data) => {
-             this.wsUrl = data.url;
-             this.self = data.self;
-             this.team = data.team;
-             this.channels = data.channels;
-             this.users = data.users;
-             this.ims = data.ims;
-             this.groups = data.groups;
+    login() {
+        this._api('rtm.start').then((data) => {
+            this.wsUrl = data.url;
+            this.self = data.self;
+            this.team = data.team;
+            this.channels = data.channels;
+            this.users = data.users;
+            this.ims = data.ims;
+            this.groups = data.groups;
 
-             this.emit('start');
+            this.emit('start');
 
-             this.connect();
-         }).fail((data) => {
-             this.emit('error', new Error(data.error ? data.error : data));
-         }).done();
+            this.connect();
+        }).fail((data) => {
+            this.emit('error', new Error(data.error ? data.error : data));
+        }).done();
     }
 
     /**
      * Establish a WebSocket connection
      */
-     connect() {
-         this.ws = new WebSocket(this.wsUrl);
+    connect() {
 
-         setWsHeartbeat(this.ws, '{ "kind": "ping" }');
+        let options = url.parse(this.proxy);
+        let agent = new HttpsProxyAgent(options);
 
-         this.ws.on('open', function(data) {
-             this.emit('open', data);
-         }.bind(this));
+        this.ws = new WebSocket(this.wsUrl, {
+            agent: agent
+        });
 
-         this.ws.on('close', function(data) {
-             this.emit('close', data);
-         }.bind(this));
+        setWsHeartbeat(this.ws, '{ "kind": "ping" }');
 
-         this.ws.on('message', function(data) {
-             try {
-                 this.emit('message', JSON.parse(data));
-             } catch (e) {
-                 console.log(e);
-             }
-         }.bind(this));
-     }
+        this.ws.on('open', function (data) {
+            this.emit('open', data);
+        }.bind(this));
+
+        this.ws.on('close', function (data) {
+            this.emit('close', data);
+        }.bind(this));
+
+        this.ws.on('message', function (data) {
+            try {
+                this.emit('message', JSON.parse(data));
+            } catch (e) {
+                console.log(e);
+            }
+        }.bind(this));
+    }
 
     /**
      * Get channels
      * @returns {vow.Promise}
      */
-     getChannels() {
-         if (this.channels) {
-             return Vow.fulfill({ channels: this.channels });
-         }
-         return this._api('channels.list');
-      }
+    getChannels() {
+        if (this.channels) {
+            return Vow.fulfill({
+                channels: this.channels
+            });
+        }
+        return this._api('channels.list');
+    }
 
     /**
      * Get users
      * @returns {vow.Promise}
      */
-     getUsers() {
-          if (this.users) {
-              return Vow.fulfill({ members: this.users });
-          }
+    getUsers() {
+        if (this.users) {
+            return Vow.fulfill({
+                members: this.users
+            });
+        }
 
-          return this._api('users.list');
-     }
+        return this._api('users.list');
+    }
 
     /**
      * Get groups
@@ -101,7 +114,9 @@ class Bot extends EventEmitter {
      */
     getGroups() {
         if (this.groups) {
-            return Vow.fulfill({ groups: this.groups });
+            return Vow.fulfill({
+                groups: this.groups
+            });
         }
 
         return this._api('groups.list');
@@ -113,8 +128,10 @@ class Bot extends EventEmitter {
      * @returns {object}
      */
     getUser(name) {
-        return this.getUsers().then(function(data) {
-            var res = _.find(data.members, { name: name });
+        return this.getUsers().then(function (data) {
+            var res = _.find(data.members, {
+                name: name
+            });
 
             console.assert(res, 'user not found');
             return res;
@@ -127,8 +144,10 @@ class Bot extends EventEmitter {
      * @returns {object}
      */
     getChannel(name) {
-        return this.getChannels().then(function(data) {
-            var res = _.find(data.channels, { name: name });
+        return this.getChannels().then(function (data) {
+            var res = _.find(data.channels, {
+                name: name
+            });
 
             console.assert(res, 'channel not found');
             return res;
@@ -141,8 +160,10 @@ class Bot extends EventEmitter {
      * @returns {object}
      */
     getGroup(name) {
-        return this.getGroups().then(function(data) {
-            var res = _.find(data.groups, { name: name });
+        return this.getGroups().then(function (data) {
+            var res = _.find(data.groups, {
+                name: name
+            });
 
             console.assert(res, 'group not found');
             return res;
@@ -155,36 +176,42 @@ class Bot extends EventEmitter {
      * @returns {object}
      */
     getUserById(id) {
-        return this.getUsers().then(function(data) {
-            var res = _.find(data.members, { id: id });
+        return this.getUsers().then(function (data) {
+            var res = _.find(data.members, {
+                id: id
+            });
 
             console.assert(res, 'user not found');
             return res;
         });
     }
 
-     /**
-      * Get channel by id
-      * @param {string} id
-      * @returns {object}
-      */
+    /**
+     * Get channel by id
+     * @param {string} id
+     * @returns {object}
+     */
     getChannelById(id) {
-        return this.getChannels().then(function(data) {
-            var res = _.find(data.channels, { id: id });
+        return this.getChannels().then(function (data) {
+            var res = _.find(data.channels, {
+                id: id
+            });
 
             console.assert(res, 'channel not found');
             return res;
         });
     }
 
-     /**
-      * Get group by id
-      * @param {string} id
-      * @returns {object}
+    /**
+     * Get group by id
+     * @param {string} id
+     * @returns {object}
      */
     getGroupById(id) {
-        return this.getGroups().then(function(data) {
-            var res = _.find(data.groups, { id: id });
+        return this.getGroups().then(function (data) {
+            var res = _.find(data.groups, {
+                id: id
+            });
 
             console.assert(res, 'group not found');
             return res;
@@ -197,7 +224,7 @@ class Bot extends EventEmitter {
      * @returns {string}
      */
     getChannelId(name) {
-        return this.getChannel(name).then(function(channel) {
+        return this.getChannel(name).then(function (channel) {
             return channel.id;
         });
     }
@@ -208,7 +235,7 @@ class Bot extends EventEmitter {
      * @returns {string}
      */
     getGroupId(name) {
-        return this.getGroup(name).then(function(group) {
+        return this.getGroup(name).then(function (group) {
             return group.id;
         });
     }
@@ -219,8 +246,8 @@ class Bot extends EventEmitter {
      * @returns {string}
      */
     getUserId(name) {
-        return this.getUser(name).then(function(user) {
-           return user.id;
+        return this.getUser(name).then(function (user) {
+            return user.id;
         });
     }
 
@@ -230,8 +257,12 @@ class Bot extends EventEmitter {
      * @returns {object}
      */
     getUserByEmail(email) {
-        return this.getUsers().then(function(data) {
-            return _.find(data.members, { profile: { email: email } });
+        return this.getUsers().then(function (data) {
+            return _.find(data.members, {
+                profile: {
+                    email: email
+                }
+            });
         });
     }
 
@@ -241,12 +272,14 @@ class Bot extends EventEmitter {
      * @returns {vow.Promise}
      */
     getChatId(name) {
-        return this.getUser(name).then(function(data) {
+        return this.getUser(name).then(function (data) {
 
-            var chatId = _.find(this.ims, { user: data.id });
+            var chatId = _.find(this.ims, {
+                user: data.id
+            });
 
             return (chatId && chatId.id) || this.openIm(data.id);
-        }.bind(this)).then(function(data) {
+        }.bind(this)).then(function (data) {
             return typeof data === 'string' ? data : data.channel.id;
         });
     }
@@ -257,7 +290,9 @@ class Bot extends EventEmitter {
      * @returns {vow.Promise}
      */
     openIm(userId) {
-        return this._api('im.open', {user: userId});
+        return this._api('im.open', {
+            user: userId
+        });
     }
 
     /**
@@ -266,7 +301,9 @@ class Bot extends EventEmitter {
      */
     getImChannels() {
         if (this.ims) {
-            return Vow.fulfill({ ims: this.ims });
+            return Vow.fulfill({
+                ims: this.ims
+            });
         }
         return this._api('im.list');
     }
@@ -307,14 +344,14 @@ class Bot extends EventEmitter {
         return this._api('chat.postMessage', params);
     }
 
-     /**
-      * Updates a message by timestamp
-      * @param {string} id - channel ID
-      * @param {string} ts - timestamp
-      * @param {string} text
-      * @param {object} params
-      * @returns {vow.Promise}
-      */
+    /**
+     * Updates a message by timestamp
+     * @param {string} id - channel ID
+     * @param {string} ts - timestamp
+     * @param {string} text
+     * @param {object} params
+     * @returns {vow.Promise}
+     */
     updateMessage(id, ts, text, params) {
         params = extend({
             ts: ts,
@@ -385,9 +422,9 @@ class Bot extends EventEmitter {
             params = null;
         }
 
-        return this[method](name).then(function(itemId) {
+        return this[method](name).then(function (itemId) {
             return this.postMessage(itemId, text, params);
-        }.bind(this)).always(function(data) {
+        }.bind(this)).always(function (data) {
             if (cb) {
                 cb(data._value);
             }
@@ -403,12 +440,14 @@ class Bot extends EventEmitter {
      * @returns {vow.Promise}
      */
     postTo(name, text, params, cb) {
-        return Vow.all([this.getChannels(), this.getUsers(), this.getGroups()]).then(function(data) {
+        return Vow.all([this.getChannels(), this.getUsers(), this.getGroups()]).then(function (data) {
 
             name = this._cleanName(name);
 
             var all = [].concat(data[0].channels, data[1].members, data[2].groups);
-            var result = _.find(all, {name: name});
+            var result = _.find(all, {
+                name: name
+            });
 
             console.assert(result, 'wrong name');
 
@@ -427,7 +466,7 @@ class Bot extends EventEmitter {
      * @param {string} name
      * @returns {string}
      */
-    _cleanName (name) {
+    _cleanName(name) {
         if (typeof name !== 'string') {
             return name;
         }
@@ -446,9 +485,11 @@ class Bot extends EventEmitter {
      * @private
      */
     _preprocessParams(params) {
-        params = extend(params || {}, {token: this.token});
+        params = extend(params || {}, {
+            token: this.token
+        });
 
-        Object.keys(params).forEach(function(name) {
+        Object.keys(params).forEach(function (name) {
             var param = params[name];
 
             if (param && typeof param === 'object') {
@@ -470,12 +511,13 @@ class Bot extends EventEmitter {
 
         var data = {
             url: 'https://slack.com/api/' + methodName,
-            form: this._preprocessParams(params)
+            form: this._preprocessParams(params),
+            proxy: this.proxy
         };
 
-        return new Vow.Promise(function(resolve, reject) {
+        return new Vow.Promise(function (resolve, reject) {
 
-            request.post(data, function(err, request, body) {
+            request.post(data, function (err, request, body) {
                 if (err) {
                     reject(err);
 
