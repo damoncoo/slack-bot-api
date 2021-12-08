@@ -7,6 +7,7 @@ var extend = require('extend');
 var WebSocket = require('ws');
 var EventEmitter = require('events').EventEmitter;
 var url = require('url')
+var HttpsProxyAgent = require('https-proxy-agent');
 
 var {
     setWsHeartbeat
