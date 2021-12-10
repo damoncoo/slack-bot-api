@@ -36,7 +36,7 @@ class Bot extends EventEmitter {
      * Starts a Real Time Messaging API session
      */
     login() {
-        this._api('rtm.start').then((data) => {
+        this.start('rtm.connect').then((data) => {
             this.wsUrl = data.url;
             this.self = data.self;
             this.team = data.team;
@@ -58,8 +58,11 @@ class Bot extends EventEmitter {
      */
     connect() {
 
-        let options = url.parse(this.proxy);
-        let agent = new HttpsProxyAgent(options);
+        let agent
+        try {
+            let options = url.parse(this.proxy);
+            agent = new HttpsProxyAgent(options);
+        } catch (error) {}
 
         this.ws = new WebSocket(this.wsUrl, {
             agent: agent
@@ -501,6 +504,51 @@ class Bot extends EventEmitter {
         });
 
         return params;
+    }
+
+
+    /**
+     * Send request to API method
+     * @param {string} methodName
+     * @param {object} params
+     * @returns {vow.Promise}
+     * @private
+     */
+    start(methodName, params) {
+
+        var data = {
+            url: 'https://slack.com/api/' + methodName,
+            proxy: this.proxy,
+            qs: {
+                token: this.token
+            }
+        };
+
+        return new Vow.Promise(function (resolve, reject) {
+
+            request.post(data, function (err, request, body) {
+                if (err) {
+                    reject(err);
+
+                    return false;
+                }
+
+                try {
+                    body = JSON.parse(body);
+
+                    // Response always contain a top-level boolean property ok,
+                    // indicating success or failure
+                    if (body.ok) {
+                        resolve(body);
+                    } else {
+                        reject(body);
+                    }
+
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        });
     }
 
     /**
