@@ -97,7 +97,7 @@ class Bot extends EventEmitter {
                 channels: this.channels
             });
         }
-        return this._api('channels.list');
+        return this._api('conversations.list');
     }
 
     /**
