@@ -551,6 +551,17 @@ class Bot extends EventEmitter {
         });
     }
 
+    sendFileToUser(user, file, params) {
+        let obj = {
+            ...params,
+            ...{
+                channels: user,
+                file: file
+            }
+        }
+        return this._api("files.upload", obj)
+    }
+
     /**
      * Send request to API method
      * @param {string} methodName
